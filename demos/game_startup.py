@@ -19,10 +19,15 @@ import cv2
 import os.path as osp
 import json
 
+import requests
+
+
 def startup():
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', '--img-path', default='res/crowdpose_100024.jpg', help='path to image')
     parser.add_argument('-o', '--out-path', default='output', help='output folder')
+    parser.add_argument('--webapp', action='store_true')
+
 
 
     # plotting options
