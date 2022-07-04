@@ -2,6 +2,7 @@ from asyncio.windows_utils import pipe
 from fileinput import filename
 import sys
 from pathlib import Path
+
 FILE = Path(__file__).absolute()
 sys.path.append(FILE.parents[1].as_posix())  # add kapao/ to path
 
@@ -21,39 +22,60 @@ import json
 
 
 # import pdb
-# pdb.set_trace() 
+# pdb.set_trace()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-p', '--img-path', default='res/crowdpose_100024.jpg', help='path to image')
-    parser.add_argument('-o', '--out-path', default='output', help='output folder')
-
+    parser.add_argument(
+        "-p", "--img-path", default="res/crowdpose_100024.jpg", help="path to image"
+    )
+    parser.add_argument("-o", "--out-path", default="output", help="output folder")
 
     # plotting options
-    parser.add_argument('--bbox', action='store_true')
-    parser.add_argument('--kp-bbox', action='store_true')
-    parser.add_argument('--pose', action='store_true')
-    parser.add_argument('--face', action='store_true')
-    parser.add_argument('--color-pose', type=int, nargs='+', default=[255, 0, 255], help='pose object color')
-    parser.add_argument('--color-kp', type=int, nargs='+', default=[0, 255, 255], help='keypoint object color')
-    parser.add_argument('--line-thick', type=int, default=2, help='line thickness')
-    parser.add_argument('--kp-size', type=int, default=1, help='keypoint circle size')
-    parser.add_argument('--kp-thick', type=int, default=2, help='keypoint circle thickness')
+    parser.add_argument("--bbox", action="store_true")
+    parser.add_argument("--kp-bbox", action="store_true")
+    parser.add_argument("--pose", action="store_true")
+    parser.add_argument("--face", action="store_true")
+    parser.add_argument(
+        "--color-pose",
+        type=int,
+        nargs="+",
+        default=[255, 0, 255],
+        help="pose object color",
+    )
+    parser.add_argument(
+        "--color-kp",
+        type=int,
+        nargs="+",
+        default=[0, 255, 255],
+        help="keypoint object color",
+    )
+    parser.add_argument("--line-thick", type=int, default=2, help="line thickness")
+    parser.add_argument("--kp-size", type=int, default=1, help="keypoint circle size")
+    parser.add_argument(
+        "--kp-thick", type=int, default=2, help="keypoint circle thickness"
+    )
 
     # model options
-    parser.add_argument('--data', type=str, default='data/coco-kp.yaml')
-    parser.add_argument('--imgsz', type=int, default=1280)
-    parser.add_argument('--weights', default='kapao_l_coco.pt')
-    parser.add_argument('--device', default='', help='cuda device, i.e. 0 or cpu')
-    parser.add_argument('--conf-thres', type=float, default=0.7, help='confidence threshold')
-    parser.add_argument('--iou-thres', type=float, default=0.45, help='NMS IoU threshold')
-    parser.add_argument('--no-kp-dets', action='store_true', help='do not use keypoint objects')
-    parser.add_argument('--conf-thres-kp', type=float, default=0.5)
-    parser.add_argument('--conf-thres-kp-person', type=float, default=0.2)
-    parser.add_argument('--iou-thres-kp', type=float, default=0.45)
-    parser.add_argument('--overwrite-tol', type=int, default=25)
-    parser.add_argument('--scales', type=float, nargs='+', default=[1])
-    parser.add_argument('--flips', type=int, nargs='+', default=[-1])
+    parser.add_argument("--data", type=str, default="data/coco-kp.yaml")
+    parser.add_argument("--imgsz", type=int, default=1280)
+    parser.add_argument("--weights", default="kapao_l_coco.pt")
+    parser.add_argument("--device", default="", help="cuda device, i.e. 0 or cpu")
+    parser.add_argument(
+        "--conf-thres", type=float, default=0.7, help="confidence threshold"
+    )
+    parser.add_argument(
+        "--iou-thres", type=float, default=0.45, help="NMS IoU threshold"
+    )
+    parser.add_argument(
+        "--no-kp-dets", action="store_true", help="do not use keypoint objects"
+    )
+    parser.add_argument("--conf-thres-kp", type=float, default=0.5)
+    parser.add_argument("--conf-thres-kp-person", type=float, default=0.2)
+    parser.add_argument("--iou-thres-kp", type=float, default=0.45)
+    parser.add_argument("--overwrite-tol", type=int, default=25)
+    parser.add_argument("--scales", type=float, nargs="+", default=[1])
+    parser.add_argument("--flips", type=int, nargs="+", default=[-1])
 
     args = parser.parse_args()
 
@@ -61,27 +83,27 @@ if __name__ == '__main__':
         data = yaml.safe_load(f)  # load data dict
 
     # add inference settings to data dict
-    data['imgsz'] = args.imgsz
-    data['conf_thres'] = args.conf_thres
-    data['iou_thres'] = args.iou_thres
-    data['use_kp_dets'] = not args.no_kp_dets
-    data['conf_thres_kp'] = args.conf_thres_kp
-    data['iou_thres_kp'] = args.iou_thres_kp
-    data['conf_thres_kp_person'] = args.conf_thres_kp_person
-    data['overwrite_tol'] = args.overwrite_tol
-    data['scales'] = args.scales
-    data['flips'] = [None if f == -1 else f for f in args.flips]
-    data['count_fused'] = False
+    data["imgsz"] = args.imgsz
+    data["conf_thres"] = args.conf_thres
+    data["iou_thres"] = args.iou_thres
+    data["use_kp_dets"] = not args.no_kp_dets
+    data["conf_thres_kp"] = args.conf_thres_kp
+    data["iou_thres_kp"] = args.iou_thres_kp
+    data["conf_thres_kp_person"] = args.conf_thres_kp_person
+    data["overwrite_tol"] = args.overwrite_tol
+    data["scales"] = args.scales
+    data["flips"] = [None if f == -1 else f for f in args.flips]
+    data["count_fused"] = False
 
     device = select_device(args.device, batch_size=1)
-    print('Using device: {}'.format(device))
+    print("Using device: {}".format(device))
 
     model = attempt_load(args.weights, map_location=device)
     stride = int(model.stride.max())  # model stride
     print(f"stride = {stride}")
     imgsz = check_img_size(args.imgsz, s=stride)  # check image size
     # dataset = LoadImages(args.img_path, img_size=imgsz, stride=stride, auto=True)
-    dataset = LoadWebcam("0", imgsz, stride )
+    dataset = LoadWebcam("0", imgsz, stride)
 
     output_namer = Make_file_names(args)
     for i in range(len(dataset)):
@@ -92,49 +114,90 @@ if __name__ == '__main__':
         if len(img.shape) == 3:
             img = img[None]  # expand for batch dim
 
-        out = model(img, augment=True, kp_flip=data['kp_flip'], scales=data['scales'], flips=data['flips'])[0]
+        out = model(
+            img,
+            augment=True,
+            kp_flip=data["kp_flip"],
+            scales=data["scales"],
+            flips=data["flips"],
+        )[0]
         person_dets, kp_dets = run_nms(data, out)
 
         if args.bbox:
-            bboxes = scale_coords(img.shape[2:], person_dets[0][:, :4], im0.shape[:2]).round().cpu().numpy()
+            bboxes = (
+                scale_coords(img.shape[2:], person_dets[0][:, :4], im0.shape[:2])
+                .round()
+                .cpu()
+                .numpy()
+            )
             for x1, y1, x2, y2 in bboxes:
-                cv2.rectangle(im0, (int(x1), int(y1)), (int(x2), int(y2)), args.color_pose, thickness=args.line_thick)
+                cv2.rectangle(
+                    im0,
+                    (int(x1), int(y1)),
+                    (int(x2), int(y2)),
+                    args.color_pose,
+                    thickness=args.line_thick,
+                )
 
-        _, poses, _, _, _ = post_process_batch(data, img, [], [[im0.shape[:2]]], person_dets, kp_dets)
+        _, poses, _, _, _ = post_process_batch(
+            data, img, [], [[im0.shape[:2]]], person_dets, kp_dets
+        )
 
         if args.pose:
             for pose in poses:
                 if args.face:
-                    for x, y, c in pose[data['kp_face']]:
-                        cv2.circle(im0, (int(x), int(y)), args.kp_size, args.color_pose, args.kp_thick)
-                for seg in data['segments'].values():
+                    for x, y, c in pose[data["kp_face"]]:
+                        cv2.circle(
+                            im0,
+                            (int(x), int(y)),
+                            args.kp_size,
+                            args.color_pose,
+                            args.kp_thick,
+                        )
+                for seg in data["segments"].values():
                     pt1 = (int(pose[seg[0], 0]), int(pose[seg[0], 1]))
                     pt2 = (int(pose[seg[1], 0]), int(pose[seg[1], 1]))
                     cv2.line(im0, pt1, pt2, args.color_pose, args.line_thick)
-                if data['use_kp_dets']:
+                if data["use_kp_dets"]:
                     for x, y, c in pose:
                         if c:
-                            cv2.circle(im0, (int(x), int(y)), args.kp_size, args.color_kp, args.kp_thick)
+                            cv2.circle(
+                                im0,
+                                (int(x), int(y)),
+                                args.kp_size,
+                                args.color_kp,
+                                args.kp_thick,
+                            )
             filename = output_namer.poses_name(i)
             np.save(filename, poses)
         if args.kp_bbox:
-            bboxes = scale_coords(img.shape[2:], kp_dets[0][:, :4], im0.shape[:2]).round().cpu().numpy()
+            bboxes = (
+                scale_coords(img.shape[2:], kp_dets[0][:, :4], im0.shape[:2])
+                .round()
+                .cpu()
+                .numpy()
+            )
             for x1, y1, x2, y2 in bboxes:
-                cv2.rectangle(im0, (int(x1), int(y1)), (int(x2), int(y2)), args.color_kp, thickness=args.line_thick)
+                cv2.rectangle(
+                    im0,
+                    (int(x1), int(y1)),
+                    (int(x2), int(y2)),
+                    args.color_kp,
+                    thickness=args.line_thick,
+                )
 
         # filename = '{}_{}'.format(osp.splitext(osp.split(args.img_path)[-1])[0], osp.splitext(args.weights)[0])
-        filename = output_namer.output_image(i,data)
+        filename = output_namer.output_image(i, data)
         cv2.imwrite(filename, im0)
         print(f"File out is {filename}")
 
-        
         # Display the resulting frame
-        cv2.imshow('frame', im0)
+        cv2.imshow("frame", im0)
 
         # the 'q' button is set as the
         # quitting button you may use any
         # desired button of your choice
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        if cv2.waitKey(1) & 0xFF == ord("q"):
             dataset.ext()
             break
 
