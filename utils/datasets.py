@@ -286,7 +286,10 @@ class LoadWebcam:  # for inference
         return img_path, img, img0, None
 
     def __len__(self):
-        return 0
+        return int(1e2)
+
+    def exit(self):
+        self.cap.release()
 
 
 class LoadStreams:  # multiple IP or RTSP cameras

@@ -19,11 +19,7 @@ import cv2
 import os.path as osp
 import json
 
-
-# import pdb
-# pdb.set_trace() 
-
-if __name__ == '__main__':
+def startup():
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', '--img-path', default='res/crowdpose_100024.jpg', help='path to image')
     parser.add_argument('-o', '--out-path', default='output', help='output folder')
@@ -80,64 +76,5 @@ if __name__ == '__main__':
     stride = int(model.stride.max())  # model stride
     print(f"stride = {stride}")
     imgsz = check_img_size(args.imgsz, s=stride)  # check image size
-    # dataset = LoadImages(args.img_path, img_size=imgsz, stride=stride, auto=True)
-    dataset = LoadWebcam("0", imgsz, stride )
 
-    output_namer = Make_file_names(args)
-    for i in range(len(dataset)):
-
-        (_, img, im0, _) = next(iter(dataset))
-        img = torch.from_numpy(img).to(device)
-        img = img / 255.0  # 0 - 255 to 0.0 - 1.0
-        if len(img.shape) == 3:
-            img = img[None]  # expand for batch dim
-
-        out = model(img, augment=True, kp_flip=data['kp_flip'], scales=data['scales'], flips=data['flips'])[0]
-        person_dets, kp_dets = run_nms(data, out)
-
-        if args.bbox:
-            bboxes = scale_coords(img.shape[2:], person_dets[0][:, :4], im0.shape[:2]).round().cpu().numpy()
-            for x1, y1, x2, y2 in bboxes:
-                cv2.rectangle(im0, (int(x1), int(y1)), (int(x2), int(y2)), args.color_pose, thickness=args.line_thick)
-
-        _, poses, _, _, _ = post_process_batch(data, img, [], [[im0.shape[:2]]], person_dets, kp_dets)
-
-        if args.pose:
-            for pose in poses:
-                if args.face:
-                    for x, y, c in pose[data['kp_face']]:
-                        cv2.circle(im0, (int(x), int(y)), args.kp_size, args.color_pose, args.kp_thick)
-                for seg in data['segments'].values():
-                    pt1 = (int(pose[seg[0], 0]), int(pose[seg[0], 1]))
-                    pt2 = (int(pose[seg[1], 0]), int(pose[seg[1], 1]))
-                    cv2.line(im0, pt1, pt2, args.color_pose, args.line_thick)
-                if data['use_kp_dets']:
-                    for x, y, c in pose:
-                        if c:
-                            cv2.circle(im0, (int(x), int(y)), args.kp_size, args.color_kp, args.kp_thick)
-            filename = output_namer.poses_name(i)
-            np.save(filename, poses)
-        if args.kp_bbox:
-            bboxes = scale_coords(img.shape[2:], kp_dets[0][:, :4], im0.shape[:2]).round().cpu().numpy()
-            for x1, y1, x2, y2 in bboxes:
-                cv2.rectangle(im0, (int(x1), int(y1)), (int(x2), int(y2)), args.color_kp, thickness=args.line_thick)
-
-        # filename = '{}_{}'.format(osp.splitext(osp.split(args.img_path)[-1])[0], osp.splitext(args.weights)[0])
-        filename = output_namer.output_image(i,data)
-        cv2.imwrite(filename, im0)
-        print(f"File out is {filename}")
-
-        
-        # Display the resulting frame
-        cv2.imshow('frame', im0)
-
-        # the 'q' button is set as the
-        # quitting button you may use any
-        # desired button of your choice
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            dataset.ext()
-            break
-
-
-# Destroy all the windows
-cv2.destroyAllWindows()
+    return  args, data, model

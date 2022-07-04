@@ -1,3 +1,19 @@
+# Anthony modify
+* setup using the setup section below
+* changed the `LoadImages` ro `LoadWebCam`
+* added output folder as a arg. 
+`python demos/image.py --pose --face --no-kp-dets --imgsz 256`
+* game test
+` python demos/game_test.py`
+## Game 2
+* starting from real python's tutorial on games. 
+* https://github.com/realpython/materials/blob/master/pygame-a-primer/py_tut_with_images.py
+* You need a webcam
+* pop the ballons with your hands before they get to the top
+* run with 
+`python demos/game2.py`
+
+
 # KAPAO (Keypoints and Poses as Objects)
 
 KAPAO is an efficient single-stage multi-person human pose estimation method that models 
