@@ -1,4 +1,9 @@
 # Anthony modify
+
+* fork of https://github.com/wmcnally/kapao
+    - very nice work
+    - all the code ran on the 1st try
+
 * setup using the setup section below
 * changed the `LoadImages` ro `LoadWebCam`
 * added output folder as a arg. 
@@ -6,12 +11,15 @@
 * game test
 ` python demos/game_test.py`
 ## Game 2
+
 * starting from real python's tutorial on games. 
 * https://github.com/realpython/materials/blob/master/pygame-a-primer/py_tut_with_images.py
 * You need a webcam
 * pop the ballons with your hands before they get to the top
 * run with 
-`python demos/game2.py`
+`python demos/game2.py`    
+`pip list --format=freeze > requirements2.txt`    
+`pip install -r requirements2.txt`
 
 
 # KAPAO (Keypoints and Poses as Objects)
