@@ -225,10 +225,12 @@ while running:
     print(f"Frame {counter}")
     img = torch.from_numpy(img).to(device)
     img = img / 255.0  # 0 - 255 to 0.0 - 1.0
-    if len(img.shape) == 3:
-        img = img[None]  # expand for batch dim
+    # print(f"img shape is {img.shape}")
+   
 
     if args.webapp == False:
+        if len(img.shape) == 3:
+            img = img[None]  # expand for batch dim
         out = model(
             img,
             augment=True,
@@ -237,11 +239,21 @@ while running:
             flips=data["flips"],
         )[0]
         person_dets, kp_dets = run_nms(data, out)
-        _, poses, _, _, _ = post_process_batch(
+
+
+    else:
+        person_dets, kp_dets = get_server_response(img)
+        if len(img.shape) == 3:
+            img = img[None]  # expand for batch dim
+      
+       
+
+    print("kp_dets shape", kp_dets[0].shape) #([10, 40])
+    print("person_dets shape", person_dets[0].shape) # .Size([1, 40])
+
+    _, poses, _, _, _ = post_process_batch(
             data, img, [], [[im0.shape[:2]]], person_dets, kp_dets
         )
-    else:
-        poses = get_server_response(img)
 
     # Look at every event in the queue
     for event in pygame.event.get():
