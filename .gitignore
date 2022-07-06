@@ -1,7 +1,5 @@
 output
-# data
-!sprite/ballon_very_small.jpg
-!sprite/blue_small.jpg
+
 
 score.txt
 
@@ -250,3 +248,9 @@ com_crashlytics_export_strings.xml
 crashlytics.properties
 crashlytics-build.properties
 fabric.properties
+
+
+# data
+!sprite
+!sprite/ballon_very_small.jpg
+!sprite/blue_small.jpg
