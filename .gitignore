@@ -1,6 +1,8 @@
 output
 # data
 !sprite/ballon_very_small.jpg
+!sprite/blue_small.jpg
+
 
 
 # Repo-specific GitIgnore ----------------------------------------------------------------------------------------------
