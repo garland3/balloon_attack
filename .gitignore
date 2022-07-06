@@ -3,7 +3,7 @@ output
 !sprite/ballon_very_small.jpg
 !sprite/blue_small.jpg
 
-
+score.txt
 
 # Repo-specific GitIgnore ----------------------------------------------------------------------------------------------
 *.jpg
