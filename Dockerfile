@@ -12,7 +12,7 @@ RUN apt-get update
 RUN apt-get install ffmpeg libsm6 libxext6  -y
 
 RUN python -m pip install -r requirements.txt
-RUN python -m pip install flask
+RUN python -m pip install flask black
 
 
 RUN  python data/scripts/download_models.py

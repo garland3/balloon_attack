@@ -11,6 +11,8 @@ from fileinput import filename
 import sys
 from pathlib import Path
 
+from pyparsing import White
+
 from demos.webserver_interface import get_server_response
 
 FILE = Path(__file__).absolute()
@@ -28,6 +30,7 @@ from val import run_nms, post_process_batch
 from utils.torch_utils import select_device
 
 BLACK = (0, 0, 0)
+WHITE_color = (255, 255, 255)
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
@@ -155,192 +158,261 @@ class Score_Box(pygame.sprite.Sprite):
 # Initialize pygame
 pygame.init()
 
-# sound
-pygame.mixer.init()
-# collision_sound = pygame.mixer.Sound("sound/pygame-a-primer_Collision.oga")
-collision_sound = pygame.mixer.Sound("sound/pop.wav")
+def end_mode(score,highscore):
+    # create the display surface object
+    sz = 60
+    display_surface = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+    font = pygame.font.Font('freesansbold.ttf', sz)
+    text = font.render(f"Score = {score}",True, BLACK, WHITE_color)
 
-collision_sound.set_volume(1.0)
+    font2 = pygame.font.Font('freesansbold.ttf', sz)
+    highscore_text = font2.render(f"Highscore = {highscore}",
+         True, BLACK, WHITE_color)
+    textRect = text.get_rect()
+    textHighScoreRect = highscore_text.get_rect()
 
-# Setup the clock for a decent framerate
-clock = pygame.time.Clock()
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+    clock = pygame.time.Clock()
+    # set the center of the rectangular object.
+    textRect.center = (SCREEN_WIDTH // 2, -50+ SCREEN_HEIGHT// 2)
+    textHighScoreRect.center = (SCREEN_WIDTH // 2, 50+ SCREEN_HEIGHT// 2)
 
-# # Create custom events for adding a new enemy and cloud
-# ADDENEMY = pygame.USEREVENT + 1
-# pygame.time.set_timer(ADDENEMY, 250)
-ADDBALLON = pygame.USEREVENT + 2
-new_ballon_rate = 5000
-pygame.time.set_timer(ADDBALLON, new_ballon_rate)
+    for i in range(50):
+        display_surface.fill(WHITE_color)
 
-# # Create our 'player'
-# player = Player()
-left_hand = Hand()
-right_hand = Hand()
-right_foot = Foot()
-left_foot = Foot()
-
-
-# # Create groups to hold enemy sprites, cloud sprites, and all sprites
-# # - ballons is used for position updates
-# # - all_sprites isused for rendering
-ballons = pygame.sprite.Group()
-body = pygame.sprite.Group()
-body.add(left_hand)
-body.add(right_hand)
-body.add(right_foot)
-body.add(left_foot)
-
-score_box = Score_Box()
-
-all_sprites = pygame.sprite.Group()
-all_sprites.add(left_hand)
-all_sprites.add(right_hand)
-all_sprites.add(score_box)
-all_sprites.add(right_foot)
-all_sprites.add(left_foot)
-
-# Variable to keep our main loop running
-running = True
-imgsz = 256
-stride = 64
-dataset = LoadWebcam("0", imgsz, stride)
-
-args, data, model = startup()
-args.pose = True
-device = select_device(args.device, batch_size=1)
-
-line_color = (255, 0, 0)
-score = 0
-
-# Our main loop
-counter = 0
-speed = 5
-score_box.update_score(score, speed)
-while running:
-    counter += 1
-
-    # get an image from the web cam.
-    (_, img, im0, _) = next(iter(dataset))
-    print(f"Frame {counter}")
-    img = torch.from_numpy(img).to(device)
-    img = img / 255.0  # 0 - 255 to 0.0 - 1.0
-    # print(f"img shape is {img.shape}")
-   
-
-    if args.webapp == False:
-        if len(img.shape) == 3:
-            img = img[None]  # expand for batch dim
-        out = model(
-            img,
-            augment=True,
-            kp_flip=data["kp_flip"],
-            scales=data["scales"],
-            flips=data["flips"],
-        )[0]
-        person_dets, kp_dets = run_nms(data, out)
+        # copying the text surface object
+        # to the display surface object
+        # at the center coordinate.
+        display_surface.blit(text, textRect)
+        display_surface.blit(highscore_text, textHighScoreRect)
 
 
-    else:
-        person_dets, kp_dets = get_server_response(img)
-        if len(img.shape) == 3:
-            img = img[None]  # expand for batch dim
-      
-       
+        # iterate over the list of Event objects
+        # that was returned by pygame.event.get() method.
+        for event in pygame.event.get():
+            # if event object type is QUIT
+            # then quitting the pygame
+            # and program both.
+            if event.type == pygame.QUIT:
+                return                  
+            # Did the user hit a key?
+            if event.type == KEYDOWN:
+                # Was it the Escape key? If so, stop the loop
+                if event.key == K_ESCAPE:
+                    return
 
-    print("kp_dets shape", kp_dets[0].shape) #([10, 40])
-    print("person_dets shape", person_dets[0].shape) # .Size([1, 40])
+            # Draws the surface object to the screen.
+        pygame.display.update()
+        clock.tick(15)
 
-    _, poses, _, _, _ = post_process_batch(
-            data, img, [], [[im0.shape[:2]]], person_dets, kp_dets
-        )
 
-    # Look at every event in the queue
-    for event in pygame.event.get():
-        # Did the user hit a key?
-        if event.type == KEYDOWN:
-            # Was it the Escape key? If so, stop the loop
-            if event.key == K_ESCAPE:
+
+def game_mode():
+    # sound
+    pygame.mixer.init()
+    # collision_sound = pygame.mixer.Sound("sound/pygame-a-primer_Collision.oga")
+    collision_sound = pygame.mixer.Sound("sound/pop.wav")
+
+    collision_sound.set_volume(1.0)
+
+    # Setup the clock for a decent framerate
+    clock = pygame.time.Clock()
+    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+
+    # # Create custom events for adding a new enemy and cloud
+    # ADDENEMY = pygame.USEREVENT + 1
+    # pygame.time.set_timer(ADDENEMY, 250)
+    ADDBALLON = pygame.USEREVENT + 2
+    new_ballon_rate = 5000
+    pygame.time.set_timer(ADDBALLON, new_ballon_rate)
+
+    # # Create our 'player'
+    # player = Player()
+    left_hand = Hand()
+    right_hand = Hand()
+    right_foot = Foot()
+    left_foot = Foot()
+
+
+    # # Create groups to hold enemy sprites, cloud sprites, and all sprites
+    # # - ballons is used for position updates
+    # # - all_sprites isused for rendering
+    ballons = pygame.sprite.Group()
+    body = pygame.sprite.Group()
+    body.add(left_hand)
+    body.add(right_hand)
+    body.add(right_foot)
+    body.add(left_foot)
+
+    score_box = Score_Box()
+
+    all_sprites = pygame.sprite.Group()
+    all_sprites.add(left_hand)
+    all_sprites.add(right_hand)
+    all_sprites.add(score_box)
+    all_sprites.add(right_foot)
+    all_sprites.add(left_foot)
+
+    # Variable to keep our main loop running
+    running = True
+    imgsz = 256
+    stride = 64
+    dataset = LoadWebcam("0", imgsz, stride)
+
+    args, data, model = startup()
+    args.pose = True
+    device = select_device(args.device, batch_size=1)
+
+    line_color = (255, 0, 0)
+    score = 0
+
+    # Our main loop
+    counter = 0
+    speed = 5
+    score_box.update_score(score, speed)
+    while running:
+        counter += 1
+
+        # get an image from the web cam.
+        (_, img, im0, _) = next(iter(dataset))
+        print(f"Frame {counter}")
+        img = torch.from_numpy(img).to(device)
+        img = img / 255.0  # 0 - 255 to 0.0 - 1.0
+        # print(f"img shape is {img.shape}")
+    
+
+        if args.webapp == False:
+            if len(img.shape) == 3:
+                img = img[None]  # expand for batch dim
+            out = model(
+                img,
+                augment=True,
+                kp_flip=data["kp_flip"],
+                scales=data["scales"],
+                flips=data["flips"],
+            )[0]
+            person_dets, kp_dets = run_nms(data, out)
+
+
+        else:
+            person_dets, kp_dets = get_server_response(img)
+            if len(img.shape) == 3:
+                img = img[None]  # expand for batch dim
+        
+        
+
+        # print("kp_dets shape", kp_dets[0].shape) #([10, 40])
+        # print("person_dets shape", person_dets[0].shape) # .Size([1, 40])
+
+        _, poses, _, _, _ = post_process_batch(
+                data, img, [], [[im0.shape[:2]]], person_dets, kp_dets
+            )
+
+        # Look at every event in the queue
+        for event in pygame.event.get():
+            # Did the user hit a key?
+            if event.type == KEYDOWN:
+                # Was it the Escape key? If so, stop the loop
+                if event.key == K_ESCAPE:
+                    running = False
+
+            # Did the user click the window close button? If so, stop the loop
+            elif event.type == QUIT:
                 running = False
 
-        # Did the user click the window close button? If so, stop the loop
-        elif event.type == QUIT:
-            running = False
+            # Should we add a new ballon?
+            elif event.type == ADDBALLON:
+                # Create the new cloud, and add it to our sprite groups
+                new_ballon = Ballon(speed)
+                ballons.add(new_ballon)
+                all_sprites.add(new_ballon)
 
-        # Should we add a new ballon?
-        elif event.type == ADDBALLON:
-            # Create the new cloud, and add it to our sprite groups
-            new_ballon = Ballon(speed)
-            ballons.add(new_ballon)
-            all_sprites.add(new_ballon)
+        # # Fill the screen with sky blue
+        screen.fill((135, 206, 250))
 
-    # # Fill the screen with sky blue
-    screen.fill((135, 206, 250))
+        if args.pose:
+            if len(poses) > 0:
+                pose = poses[0]
+                # for pose in poses:
+                for seg in data["segments"].values():
+                    pt1 = (int(pose[seg[0], 0]), int(pose[seg[0], 1]))
+                    pt2 = (int(pose[seg[1], 0]), int(pose[seg[1], 1]))
+                    # cv2.line(im0, pt1, pt2, args.color_pose, args.line_thick)
+                    pygame.draw.line(screen, line_color, pt1, pt2, width=5)
+                # pose = poses[0]
 
-    if args.pose:
-        if len(poses) > 0:
-            pose = poses[0]
-            # for pose in poses:
-            for seg in data["segments"].values():
-                pt1 = (int(pose[seg[0], 0]), int(pose[seg[0], 1]))
-                pt2 = (int(pose[seg[1], 0]), int(pose[seg[1], 1]))
-                # cv2.line(im0, pt1, pt2, args.color_pose, args.line_thick)
-                pygame.draw.line(screen, line_color, pt1, pt2, width=5)
-            # pose = poses[0]
+                left_wrist, right_wrist = 9, 10
+                left_ankle, right_ankle = 15, 16
+                left_hand.set_center(int(pose[left_wrist, 0]), int(pose[left_wrist, 1]))
+                right_hand.set_center(int(pose[right_wrist, 0]), int(pose[right_wrist, 1]))
 
-            left_wrist, right_wrist = 9, 10
-            left_ankle, right_ankle = 15, 16
-            left_hand.set_center(int(pose[left_wrist, 0]), int(pose[left_wrist, 1]))
-            right_hand.set_center(int(pose[right_wrist, 0]), int(pose[right_wrist, 1]))
+                left_foot.set_center(int(pose[left_ankle, 0]), int(pose[left_ankle, 1]))
+                right_foot.set_center(int(pose[right_ankle, 0]), int(pose[right_ankle, 1]))
 
-            left_foot.set_center(int(pose[left_ankle, 0]), int(pose[left_ankle, 1]))
-            right_foot.set_center(int(pose[right_ankle, 0]), int(pose[right_ankle, 1]))
+        # print(f"poses shape {poses[0].shape}") 17,3
+        # # Check if any enemies have collided with the player
+        for body_part in body:
+            hit_ballon = pygame.sprite.spritecollideany(body_part, ballons)
+            if hit_ballon:
+                hit_ballon.remove = True
+                score += 100 * body_part.score_multi
+                score_box.update_score(score, speed)
+                score_box.update()
+                collision_sound.play()
 
-    # print(f"poses shape {poses[0].shape}") 17,3
-    # # Check if any enemies have collided with the player
-    for body_part in body:
-        hit_ballon = pygame.sprite.spritecollideany(body_part, ballons)
-        if hit_ballon:
-            hit_ballon.remove = True
-            score += 100 * body_part.score_multi
-            score_box.update_score(score, speed)
-            score_box.update()
-            collision_sound.play()
+        # # Update the position of our enemies and ballons
+        # enemies.update()
+        ballons.update()
 
-    # # Update the position of our enemies and ballons
-    # enemies.update()
-    ballons.update()
+        for b in ballons:
+            if b.at_top:
+                running = False
+                print(f"Final score is {score}")
 
-    for b in ballons:
-        if b.at_top:
-            running = False
-            print(f"Final score is {score}")
+        # Draw all our sprites
+        for entity in all_sprites:
+            screen.blit(entity.surf, entity.rect)
 
-    # Draw all our sprites
-    for entity in all_sprites:
-        screen.blit(entity.surf, entity.rect)
+        if counter % 100 == 99:
+            speed += 5
+            new_ballon_rate -= 250
+            pygame.time.set_timer(ADDBALLON, new_ballon_rate)
+            print(f"Making harder. New speed is {speed}")
 
-    if counter % 100 == 99:
-        speed += 5
-        new_ballon_rate -= 250
-        pygame.time.set_timer(ADDBALLON, new_ballon_rate)
-        print(f"Making harder. New speed is {speed}")
+        # random new ballons on harder levels.
+        if score > 1500:
+            ratio = score / 5e4
+            if np.random.rand() < ratio:
+                print(f"Extra ballon ratio = {ratio}")
+                new_ballon = Ballon(speed)
+                ballons.add(new_ballon)
+                all_sprites.add(new_ballon)
 
-    # random new ballons on harder levels.
-    if score > 1500:
-        ratio = score / 5e4
-        if np.random.rand() < ratio:
-            print(f"Extra ballon ratio = {ratio}")
-            new_ballon = Ballon(speed)
-            ballons.add(new_ballon)
-            all_sprites.add(new_ballon)
+        # Flip everything to the display
+        pygame.display.flip()
 
-    # Flip everything to the display
-    pygame.display.flip()
+        # Ensure we maintain a 30 frames per second rate
+        clock.tick(10)
 
-    # Ensure we maintain a 30 frames per second rate
-    clock.tick(10)
 
-# At this point, we're done, so we can stop and quit the mixer
-# pygame.mixer.music.stop()
+
+    # At this point, we're done, so we can stop and quit the mixer
+    # pygame.mixer.music.stop()
+    return score
+
+def save_score(score):
+    file = Path("score.txt")
+    if file.exists():
+        with open(file, 'r') as f:
+            highscore = int(f.read())
+    else: highscore = 0
+    if score> highscore:
+        highscore = score
+        with open(file, 'w') as f:
+            f.write(str(score))
+    return highscore
+
+
+score = game_mode()
+highscore = save_score(score)
+end_mode(score, highscore)
 pygame.mixer.quit()
