@@ -1,28 +1,19 @@
 # Import the pygame module
 import pygame
 
-# from pygame.locals import *
-
 # Import random for random numbers
 import random
-
 from asyncio.windows_utils import pipe
 from fileinput import filename
 import sys
 from pathlib import Path
-
 from pyparsing import White
-
-from demos.webserver_interface import get_server_response
 
 FILE = Path(__file__).absolute()
 sys.path.append(FILE.parents[1].as_posix())  # add kapao/ to path
 
 import numpy as np
 import torch
-import time
-
-import cv2
 from utils.datasets import LoadImages, LoadWebcam
 
 from demos.game_startup import startup
@@ -32,10 +23,12 @@ from utils.torch_utils import select_device
 BLACK = (0, 0, 0)
 WHITE_color = (255, 255, 255)
 RED = (255, 0, 0)
+LIGHT_RED = (255, 150, 150 )
+
 GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
+LIGHT_BLUE = (150, 150, 255)
 GRAY = (200, 200, 200)
-
 
 # Import pygame.locals for easier access to key coordinates
 # Updated to conform to flake8 and black standards
@@ -55,12 +48,11 @@ from pygame.locals import (
 SCREEN_WIDTH = 640
 SCREEN_HEIGHT = 480
 
-
 # Define the cloud object extending pygame.sprite.Sprite
 # Use an image for a better looking sprite
-class Ballon(pygame.sprite.Sprite):
+class Balloon(pygame.sprite.Sprite):
     def __init__(self, speed):
-        super(Ballon, self).__init__()
+        super(Balloon, self).__init__()
         if np.random.rand() > 0.5:
             file = "sprite/ballon_very_small.jpg"
         else:
@@ -97,7 +89,7 @@ class Ballon(pygame.sprite.Sprite):
             elif self.rect.left > (SCREEN_WIDTH - 30):
                 move_left = True
             else:
-                move_right = np.random.rand() > 0
+                move_right = np.random.rand() > 0.5
                 move_left = not move_right
 
             if move_right:
@@ -130,33 +122,152 @@ class Hand(pygame.sprite.Sprite):
 
 
 class Foot(Hand):
-    color = (255, 0, 0)
+    color = (0, 255, 0)
     score_multi = 2
 
 
-class Score_Box(pygame.sprite.Sprite):
-    def __init__(self):
-        super(Score_Box, self).__init__()
+class SpriteWithText(pygame.sprite.Sprite):
+    def __init__(self, x_position, y_position, text="", background_color = None):
+        super(SpriteWithText, self).__init__()
         self.font = pygame.font.SysFont(None, 48)
-        self.update_score(0, 30)
+        # self.update_score(0, 30)
+        self.text = text
+        self.name = ""
+        self.background_color = background_color
         self.update()
-        self.speed = 0
-        self.score = 0
-        self.rect = self.surf.get_rect(center=(int(SCREEN_WIDTH / 2), 20))
+        self.rect = self.surf.get_rect(center=(x_position, y_position))
 
     def update_score(self, score, speed):
         self.score = score
         self.speed = speed
+        self.text =   f"Score = {self.score}: Speed = {self.speed}"
         print(f"score is {score}. Speed = {speed}")
 
     def update(self):
-        self.surf = self.font.render(
-            f"Score = {self.score}: Speed = {self.speed}", False, BLACK
+        self.surf = self.font.render(self.text, False, BLACK, self.background_color
         ).convert()
 
 
+def get_body_poses(dataset, data, model, device, args):
+    # get an image from the web cam.
+    (_, img, im0, _) = next(iter(dataset))
+    img = torch.from_numpy(img).to(device)
+    img = img / 255.0  # 0 - 255 to 0.0 - 1.0
+    # print(f"img shape is {img.shape}")
+    if args.webapp == False:
+        if len(img.shape) == 3:
+            img = img[None]  # expand for batch dim
+        out = model(
+            img,
+            augment=True,
+            kp_flip=data["kp_flip"],
+            scales=data["scales"],
+            flips=data["flips"],
+        )[0]
+        person_dets, kp_dets = run_nms(data, out)
+    else:
+        person_dets, kp_dets = get_server_response(img)
+        if len(img.shape) == 3:
+            img = img[None]  # expand for batch dim
+
+    # print("kp_dets shape", kp_dets[0].shape) #([10, 40])
+    # print("person_dets shape", person_dets[0].shape) # .Size([1, 40])
+
+    _, poses, _, _, _ = post_process_batch(
+            data, img, [], [[im0.shape[:2]]], person_dets, kp_dets
+        )
+    return poses
+
+def draw_pose_set_body_positions(poses, data, screen, line_color, left_hand= None, right_hand=None, left_foot=None, right_foot=None):
+    if len(poses) > 0:
+        pose = poses[0]
+        # for pose in poses:
+        for seg in data["segments"].values():
+            pt1 = (int(pose[seg[0], 0]), int(pose[seg[0], 1]))
+            pt2 = (int(pose[seg[1], 0]), int(pose[seg[1], 1]))
+            # cv2.line(im0, pt1, pt2, args.color_pose, args.line_thick)
+            pygame.draw.line(screen, line_color, pt1, pt2, width=5)
+        # pose = poses[0]
+
+        left_wrist, right_wrist = 9, 10
+        left_ankle, right_ankle = 15, 16
+        if left_hand:left_hand.set_center(int(pose[left_wrist, 0]), int(pose[left_wrist, 1]))
+        if right_hand: right_hand.set_center(int(pose[right_wrist, 0]), int(pose[right_wrist, 1]))
+
+        if left_foot: left_foot.set_center(int(pose[left_ankle, 0]), int(pose[left_ankle, 1]))
+        if right_foot: right_foot.set_center(int(pose[right_ankle, 0]), int(pose[right_ankle, 1]))
+
+# class SpriteWithText()
+
 # Initialize pygame
 pygame.init()
+
+def start_mode():
+    # return True to keep playing
+    clock = pygame.time.Clock()
+    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+
+    left_hand = Hand()
+    right_hand = Hand()
+
+    body = pygame.sprite.Group()
+    body.add(left_hand)
+    body.add(right_hand)
+
+
+    start_game_box = SpriteWithText(SCREEN_WIDTH*3 //4, 30, "Hit to Start Game", LIGHT_BLUE)
+    start_game_box.name = "start"
+    exit_game_box = SpriteWithText(SCREEN_WIDTH//4, 30, "Hit to Exit Game", LIGHT_RED)
+    exit_game_box.name = "end"
+
+    menu_group = pygame.sprite.Group()
+    menu_group.add(start_game_box)
+    menu_group.add(exit_game_box)
+  
+    # body tracking stuff
+    args, data, model = startup()
+    args.pose = True
+    device = select_device(args.device, batch_size=1)
+    imgsz = 256
+    stride = 64
+    dataset = LoadWebcam("0", imgsz, stride)
+
+    line_color = (50, 50, 50)
+    running = True
+    while running:
+        screen.fill(WHITE_color)
+
+        poses = get_body_poses(dataset, data, model, device, args)
+        draw_pose_set_body_positions(poses, data, screen, line_color, left_hand,right_hand)
+
+        # pygame.sprite.spritecollide()
+        for body_part in body:
+            menu_item = pygame.sprite.spritecollideany(body_part, menu_group)
+            if menu_item:
+                if menu_item.name == "start": return True
+                if menu_item.name == "end": return False
+        
+        # Look at every event in the queue
+        for event in pygame.event.get():
+            # Did the user hit a key?
+            if event.type == KEYDOWN:
+                # Was it the Escape key? If so, stop the loop
+                if event.key == K_ESCAPE:
+                    running = False
+
+            # Did the user click the window close button? If so, stop the loop
+            elif event.type == QUIT:
+                running = False
+
+        for entity in menu_group:
+            screen.blit(entity.surf, entity.rect)
+        
+        for entity in body:
+            screen.blit(entity.surf, entity.rect)
+        
+        clock.tick(10)
+        pygame.display.update()
+
 
 def end_mode(score,highscore):
     # create the display surface object
@@ -243,7 +354,7 @@ def game_mode():
     body.add(right_foot)
     body.add(left_foot)
 
-    score_box = Score_Box()
+    score_box = SpriteWithText(int(SCREEN_WIDTH/2), 20, "Score = 0: Speed = 1")
 
     all_sprites = pygame.sprite.Group()
     all_sprites.add(left_hand)
@@ -267,46 +378,15 @@ def game_mode():
 
     # Our main loop
     counter = 0
-    speed = 5
+    speed = 3
+    speed_increment = 3
     score_box.update_score(score, speed)
     while running:
         counter += 1
-
-        # get an image from the web cam.
-        (_, img, im0, _) = next(iter(dataset))
         print(f"Frame {counter}")
-        img = torch.from_numpy(img).to(device)
-        img = img / 255.0  # 0 - 255 to 0.0 - 1.0
-        # print(f"img shape is {img.shape}")
-    
 
-        if args.webapp == False:
-            if len(img.shape) == 3:
-                img = img[None]  # expand for batch dim
-            out = model(
-                img,
-                augment=True,
-                kp_flip=data["kp_flip"],
-                scales=data["scales"],
-                flips=data["flips"],
-            )[0]
-            person_dets, kp_dets = run_nms(data, out)
-
-
-        else:
-            person_dets, kp_dets = get_server_response(img)
-            if len(img.shape) == 3:
-                img = img[None]  # expand for batch dim
+        poses = get_body_poses(dataset, data, model, device, args)
         
-        
-
-        # print("kp_dets shape", kp_dets[0].shape) #([10, 40])
-        # print("person_dets shape", person_dets[0].shape) # .Size([1, 40])
-
-        _, poses, _, _, _ = post_process_batch(
-                data, img, [], [[im0.shape[:2]]], person_dets, kp_dets
-            )
-
         # Look at every event in the queue
         for event in pygame.event.get():
             # Did the user hit a key?
@@ -322,31 +402,15 @@ def game_mode():
             # Should we add a new ballon?
             elif event.type == ADDBALLON:
                 # Create the new cloud, and add it to our sprite groups
-                new_ballon = Ballon(speed)
+                new_ballon = Balloon(speed)
                 ballons.add(new_ballon)
                 all_sprites.add(new_ballon)
 
         # # Fill the screen with sky blue
         screen.fill((135, 206, 250))
 
-        if args.pose:
-            if len(poses) > 0:
-                pose = poses[0]
-                # for pose in poses:
-                for seg in data["segments"].values():
-                    pt1 = (int(pose[seg[0], 0]), int(pose[seg[0], 1]))
-                    pt2 = (int(pose[seg[1], 0]), int(pose[seg[1], 1]))
-                    # cv2.line(im0, pt1, pt2, args.color_pose, args.line_thick)
-                    pygame.draw.line(screen, line_color, pt1, pt2, width=5)
-                # pose = poses[0]
-
-                left_wrist, right_wrist = 9, 10
-                left_ankle, right_ankle = 15, 16
-                left_hand.set_center(int(pose[left_wrist, 0]), int(pose[left_wrist, 1]))
-                right_hand.set_center(int(pose[right_wrist, 0]), int(pose[right_wrist, 1]))
-
-                left_foot.set_center(int(pose[left_ankle, 0]), int(pose[left_ankle, 1]))
-                right_foot.set_center(int(pose[right_ankle, 0]), int(pose[right_ankle, 1]))
+        if args.pose:            
+            draw_pose_set_body_positions(poses, data, screen, line_color, left_hand, right_hand, left_foot, right_foot)
 
         # print(f"poses shape {poses[0].shape}") 17,3
         # # Check if any enemies have collided with the player
@@ -360,7 +424,6 @@ def game_mode():
                 collision_sound.play()
 
         # # Update the position of our enemies and ballons
-        # enemies.update()
         ballons.update()
 
         for b in ballons:
@@ -372,8 +435,8 @@ def game_mode():
         for entity in all_sprites:
             screen.blit(entity.surf, entity.rect)
 
-        if counter % 100 == 99:
-            speed += 5
+        if counter % 500 == 99:
+            speed += speed_increment
             new_ballon_rate -= 250
             pygame.time.set_timer(ADDBALLON, new_ballon_rate)
             print(f"Making harder. New speed is {speed}")
@@ -383,14 +446,14 @@ def game_mode():
             ratio = score / 5e4
             if np.random.rand() < ratio:
                 print(f"Extra ballon ratio = {ratio}")
-                new_ballon = Ballon(speed)
+                new_ballon = Balloon(speed)
                 ballons.add(new_ballon)
                 all_sprites.add(new_ballon)
 
         # Flip everything to the display
         pygame.display.flip()
 
-        # Ensure we maintain a 30 frames per second rate
+        # Ensure we maintain a 10 frames per second rate
         clock.tick(10)
 
 
@@ -411,8 +474,11 @@ def save_score(score):
             f.write(str(score))
     return highscore
 
+play = start_mode()
+while play:
+    score = game_mode()
+    highscore = save_score(score)
+    end_mode(score, highscore)
+    play = start_mode()
 
-score = game_mode()
-highscore = save_score(score)
-end_mode(score, highscore)
 pygame.mixer.quit()
