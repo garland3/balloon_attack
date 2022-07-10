@@ -22,14 +22,14 @@ import json
 
 import requests
 
-
-def startup():
+def parse_the_inputs():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-p", "--img-path", default="res/crowdpose_100024.jpg", help="path to image"
     )
     parser.add_argument("-o", "--out-path", default="output", help="output folder")
     parser.add_argument("--webapp", action="store_true")
+    parser.add_argument("--debug", '-d', dest="debug", action="store_true", default=False)
 
     # plotting options
     parser.add_argument("--bbox", action="store_true")
@@ -80,6 +80,11 @@ def startup():
     parser.add_argument("--flips", type=int, nargs="+", default=[-1])
 
     args = parser.parse_args()
+    return args
+
+
+def startup():
+    args = parse_the_inputs()
 
     with open(args.data) as f:
         data = yaml.safe_load(f)  # load data dict

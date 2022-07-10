@@ -16,7 +16,7 @@ import numpy as np
 import torch
 from utils.datasets import LoadImages, LoadWebcam
 
-from demos.game_startup import startup
+from demos.game_startup import startup, parse_the_inputs
 from val import run_nms, post_process_batch
 from utils.torch_utils import select_device
 
@@ -63,7 +63,7 @@ class Balloon(pygame.sprite.Sprite):
     def __init__(self, speed):
         super(Balloon, self).__init__()
         v = np.random.rand()
-        if v > 0.9:
+        if v > 0.6:
             file = "sprite/ballon_very_small.jpg"
         elif v > 0.3:
             file = "sprite/blue4.png"
@@ -525,7 +525,8 @@ def save_score(score):
             f.write(str(score))
     return highscore
 
-debug = True
+args = parse_the_inputs()
+debug = args.debug
 if debug == False:
     play = start_mode()
     while play:
