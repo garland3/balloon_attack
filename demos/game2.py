@@ -48,28 +48,48 @@ from pygame.locals import (
 SCREEN_WIDTH = 640
 SCREEN_HEIGHT = 480
 
+def scrollX(screenSurf, offsetX):
+    width, height = screenSurf.get_size()
+    copySurf = screenSurf.copy()
+    screenSurf.blit(copySurf, (offsetX, 0))
+    if offsetX < 0:
+        screenSurf.blit(copySurf, (width + offsetX, 0), (0, 0, -offsetX, height))
+    else:
+        screenSurf.blit(copySurf, (0, 0), (width - offsetX, 0, offsetX, height))
+
 # Define the cloud object extending pygame.sprite.Sprite
 # Use an image for a better looking sprite
 class Balloon(pygame.sprite.Sprite):
     def __init__(self, speed):
         super(Balloon, self).__init__()
-        if np.random.rand() > 0.5:
+        v = np.random.rand()
+        if v > 0.9:
             file = "sprite/ballon_very_small.jpg"
-        else:
-            file = "sprite/blue_small.jpg"
-        self.surf = pygame.image.load(file).convert()
-        self.surf.set_colorkey((0, 0, 0), RLEACCEL)
+        elif v > 0.3:
+            file = "sprite/blue4.png"
+        else: 
+            file = "sprite/blue.jpg"
+        self.surf = pygame.image.load(file). convert_alpha()
+        # self.surf
+        # self.surf = pygame.image.load(file).convert()
+
+        # self.surf.set_colorkey((254, 254, 254))
+        # self.surf.set_colorkey((255, 255, 255))
+
+        # self.surf.set_alpha(128)
+        print(f"alpha is {self.surf.get_colorkey()}")
         # The starting position is randomly generated
         center = (
             random.randint(20, SCREEN_WIDTH - 20),
-            SCREEN_HEIGHT + 20
+            SCREEN_HEIGHT + self.surf.get_size()[1]
             # random.randint(0, SCREEN_HEIGHT),
         )
         self.rect = self.surf.get_rect(center=center)
+        # self.rect.
         print(f"new ballon at {center}")
         self.remove = False
         self.at_top = False
-        self.speed = speed + speed * ((np.random.rand() - 0.5) / 5)
+        self.speed = speed + speed * ((np.random.normal() - 0.5) / 4)
         self.zigzag = np.random.rand() > 0.75
 
     # Move the cloud based on a constant speed
@@ -103,6 +123,20 @@ class Balloon(pygame.sprite.Sprite):
             self.at_top = True
             print("ballon at top")
 
+class Background(pygame.sprite.Sprite):
+    def __init__(self):
+        super(Background, self).__init__()
+        file = "sprite/m_clouds.jpg"
+        # file = "sprite/m_sandia.jpg"
+
+        self.surf = pygame.image.load(file).convert()
+        self.surf.set_colorkey((0, 0, 0), RLEACCEL)
+        # The starting position is randomly generated
+        # center = ( SCREEN_WIDTH //2,
+        #     SCREEN_HEIGHT
+        # )
+        center = (0,0)
+        self.rect =  self.surf.get_rect() #center=center)
 
 class Hand(pygame.sprite.Sprite):
     color = (255, 255, 255)
@@ -153,7 +187,8 @@ def get_body_poses(dataset, data, model, device, args):
     (_, img, im0, _) = next(iter(dataset))
     img = torch.from_numpy(img).to(device)
     img = img / 255.0  # 0 - 255 to 0.0 - 1.0
-    # print(f"img shape is {img.shape}")
+    # print
+    # (f"img shape is {img.shape}")
     if args.webapp == False:
         if len(img.shape) == 3:
             img = img[None]  # expand for batch dim
@@ -354,7 +389,7 @@ def game_mode():
     body.add(right_foot)
     body.add(left_foot)
 
-    score_box = SpriteWithText(int(SCREEN_WIDTH/2), 20, "Score = 0: Speed = 1")
+    score_box = SpriteWithText(int(SCREEN_WIDTH/2), 20, "Score = 0: Speed = 1", background_color=WHITE_color)
 
     all_sprites = pygame.sprite.Group()
     all_sprites.add(left_hand)
@@ -379,8 +414,11 @@ def game_mode():
     # Our main loop
     counter = 0
     speed = 3
-    speed_increment = 3
+    speed_increment = 1
     score_box.update_score(score, speed)
+    background_change_sign = -1
+    sky_color = (135, 206, 250)
+    back_ground_sprite = Background()
     while running:
         counter += 1
         print(f"Frame {counter}")
@@ -402,12 +440,23 @@ def game_mode():
             # Should we add a new ballon?
             elif event.type == ADDBALLON:
                 # Create the new cloud, and add it to our sprite groups
+               
                 new_ballon = Balloon(speed)
                 ballons.add(new_ballon)
                 all_sprites.add(new_ballon)
 
         # # Fill the screen with sky blue
-        screen.fill((135, 206, 250))
+        # sky_color = ()
+        # screen.fill((135, 206, 250))
+        # sky_color = (sky_color[0], sky_color[1] + background_change_sign,  sky_color[2])
+        # if sky_color[1]>254:
+        #     background_change_sign =-1
+        # if sky_color[1]<1:
+        #     background_change_sign =1
+        screen.fill(sky_color)
+        screen.blit(back_ground_sprite.surf, back_ground_sprite.rect)
+        # back_ground_sprite.surf.scroll(1,0)
+        scrollX(back_ground_sprite.surf, speed // 3)
 
         if args.pose:            
             draw_pose_set_body_positions(poses, data, screen, line_color, left_hand, right_hand, left_foot, right_foot)
@@ -435,20 +484,22 @@ def game_mode():
         for entity in all_sprites:
             screen.blit(entity.surf, entity.rect)
 
-        if counter % 500 == 99:
+        if counter % 100 == 99:
             speed += speed_increment
-            new_ballon_rate -= 250
+            new_ballon_rate -= 350
             pygame.time.set_timer(ADDBALLON, new_ballon_rate)
             print(f"Making harder. New speed is {speed}")
 
         # random new ballons on harder levels.
         if score > 1500:
-            ratio = score / 5e4
+            ratio = score / 5e5
             if np.random.rand() < ratio:
-                print(f"Extra ballon ratio = {ratio}")
-                new_ballon = Balloon(speed)
-                ballons.add(new_ballon)
-                all_sprites.add(new_ballon)
+                num_ballons = max(1+ (score // 3000), 1)
+                print(f"Extra ballon ratio = {ratio}, num balloons = {num_ballons}")
+                for i in range(num_ballons):
+                    new_ballon = Balloon(speed)
+                    ballons.add(new_ballon)
+                    all_sprites.add(new_ballon)
 
         # Flip everything to the display
         pygame.display.flip()
@@ -474,11 +525,16 @@ def save_score(score):
             f.write(str(score))
     return highscore
 
-play = start_mode()
-while play:
-    score = game_mode()
-    highscore = save_score(score)
-    end_mode(score, highscore)
+debug = True
+if debug == False:
     play = start_mode()
+    while play:
+        score = game_mode()
+        highscore = save_score(score)
+        end_mode(score, highscore)
+        play = start_mode()
+else:
+    score = game_mode()
+
 
 pygame.mixer.quit()
