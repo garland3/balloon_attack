@@ -16,7 +16,7 @@
 2. Create a new conda environment with Python 3.6: `$ conda create -n kapao python=3.6`.
 3. Activate the environment: `$ conda activate kapao`
 4. Clone this repo: `$ git clone git@github.com:garland3/balloon_attack.git`
-5. Install the dependencies: `$ cd balloon_attack && pip install -r requirements2.txt`
+5. Install the dependencies: `$ cd balloon_attack && pip install -r requirements.txt`
 6. Download the trained models: `$ python data/scripts/download_models.py`
 
 
@@ -35,7 +35,7 @@ python demos/game2.py
 
 * export requirements
 ```
-pip list --format=freeze > requirements2.txt
+pip list --format=freeze > requirements.txt
 ```    
 
 ## Original Readme
